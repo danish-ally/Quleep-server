@@ -51,7 +51,7 @@ app.post('/trigger-ringtone', (req, res) => {
 });
 
 app.post('/register', (req, res) => {
-    return
+    return 1
 });
 server.listen(port, () => {
     console.log(`Server running on port ${port}`);
