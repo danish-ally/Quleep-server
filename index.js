@@ -1,58 +1,26 @@
 const express = require('express');
 const http = require('http');
-const bodyParser = require('body-parser');
-const cors = require('cors');
 const socketIo = require('socket.io');
-const { v4: uuidv4 } = require('uuid');
+const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const io = socketIo(server, {
-    cors: {
-        origin: '*',
-    },
-});
-const port = 5000;
+const io = socketIo(server);
 
-app.use(bodyParser.json());
-app.use(cors());
-
-let registeredUsers = {};
+app.use(express.static(path.join(__dirname, '../client/build')));
 
 io.on('connection', (socket) => {
-    console.log('New client connected', socket.id);
+    console.log('New client connected');
 
-    socket.on('register', (userId) => {
-        if (!registeredUsers[userId]) {
-            registeredUsers[userId] = { socketIds: [] };
-        }
-        registeredUsers[userId].socketIds.push(socket.id);
-        console.log(`User ${userId} connected with socket ID: ${socket.id}`);
+    socket.on('audio', (data) => {
+        // Broadcast the audio data to all connected clients (admin)
+        socket.broadcast.emit('audio', data);
     });
 
     socket.on('disconnect', () => {
-        console.log('Client disconnected', socket.id);
-        for (const userId in registeredUsers) {
-            registeredUsers[userId].socketIds = registeredUsers[userId].socketIds.filter(id => id !== socket.id);
-            if (registeredUsers[userId].socketIds.length === 0) {
-                delete registeredUsers[userId];
-            }
-        }
+        console.log('Client disconnected');
     });
 });
 
-app.post('/trigger-ringtone', (req, res) => {
-    for (const userId in registeredUsers) {
-        registeredUsers[userId].socketIds.forEach(socketId => {
-            io.to(socketId).emit('trigger-ringtone');
-        });
-    }
-    res.status(200).send({ message: 'Triggering ringtone for all registered users' });
-});
-
-app.post('/register', (req, res) => {
-    return 1
-});
-server.listen(port, () => {
-    console.log(`Server running on port ${port}`);
-});
+const port = process.env.PORT || 5000;
+server.listen(port, () => console.log(`Server running on port ${port}`));
